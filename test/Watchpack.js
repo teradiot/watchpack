@@ -599,4 +599,47 @@ describe("Watchpack", function() {
 			});
 		});
 	});
+
+	it("should detect a single change, when previously deleted file is re-added", function(done) {
+		var w = new Watchpack();
+
+		var changeEvents = 0;
+		var removeEvents = 0;
+		var aggregatedEvents = 0
+
+		w.on("remove", function(file) {
+			file.should.be.eql(path.join(fixtures, "a"));
+			removeEvents++;
+		});
+
+		w.on("change", function(file) {
+			file.should.be.eql(path.join(fixtures, "a"));
+			changeEvents++;
+		});
+
+		w.on("aggregated", function(changes, removals) {
+			if (aggregatedEvents === 0) {
+				removals.should.be.eql([path.join(fixtures, "a")]);
+				removeEvents.should.be.eql(1);
+			} else if (aggregatedEvents === 1) {
+				changes.should.be.eql([path.join(fixtures, "a")]);
+				changeEvents.should.be.eql(1);
+				w.close();
+				done();
+			}
+
+			aggregatedEvents++;
+		});
+
+
+		testHelper.file("a");
+		w.watch([path.join(fixtures, "a")], []);
+
+		testHelper.tick(function() {
+			testHelper.remove("a");
+			testHelper.tick(400, function() {
+				testHelper.file("a");
+			})
+		});
+	});
 });
